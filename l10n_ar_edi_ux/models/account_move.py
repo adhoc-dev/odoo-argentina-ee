@@ -1,5 +1,6 @@
 from odoo import models, fields, api
 from odoo.addons.l10n_ar_edi.models.account_move import WS_DATE_FORMAT
+import afip_errors
 
 
 class AccountMove(models.Model):
