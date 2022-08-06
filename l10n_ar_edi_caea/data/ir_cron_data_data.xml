@@ -33,4 +33,15 @@
         <field name="doall" eval="False"/>
     </record>
 
+    <record id="ir_cron_exit_from_contigency_mode" model="ir.cron">
+        <field name="name">AFIP: Exit from cotigency mode</field>
+        <field name="model_id" ref="l10n_ar_edi_caea.model_res_company"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_exit_contigency_mode()</field>
+        <field name="interval_number">15</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="doall" eval="False"/>
+    </record>
+
 </odoo>

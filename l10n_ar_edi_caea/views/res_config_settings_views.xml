@@ -14,6 +14,7 @@
                     </div>
                     <div class="o_setting_right_pane">
                         <label for="l10n_ar_contingency_mode"/>
+                        <field name="l10n_ar_last_contigency"/>
                         <span class="fa fa-lg fa-building-o" title="Values set here are company-specific." groups="base.group_multi_company"/>
                         <div class="text-muted">Activating this option will automatically change to CAEA Journal if Odoo detects problem to connect or timeout to AFIP when validating an electronic invoice</div>
                     </div>
