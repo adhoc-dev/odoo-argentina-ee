@@ -17,8 +17,8 @@ class L10nArCaea(models.Model):
 
     name = fields.Char(copy=False)
     company_id = fields.Many2one('res.company', required=True, default=lambda self: self.env.company)
-    date_from = fields.Date(string='From')
-    date_to = fields.Date(string='To')
+    date_from = fields.Date(string='From', required=True)
+    date_to = fields.Date(string='To', required=True)
     informed = fields.Boolean(compute="_compute_informed", store=True, readonly=False, string="Reported to AFIP")
 
     process_deadline = fields.Date("Fecha Tope a Informar")        # FchTopeInf
