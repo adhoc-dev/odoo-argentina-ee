@@ -21,8 +21,8 @@ class L10nArCaea(models.Model):
     date_to = fields.Date(string='To', required=True)
     informed = fields.Boolean(compute="_compute_informed", store=True, readonly=False, string="Reported to AFIP")
 
-    process_deadline = fields.Date("Fecha Tope a Informar")        # FchTopeInf
-    process_datetime = fields.Datetime("Fecha de (Creación)")    # FchProceso
+    process_deadline = fields.Date("Fecha Vencimiento", readonly=True)        # FchTopeInf
+    process_datetime = fields.Datetime("Fecha de Solicitud", readonly=True)    # FchProceso
 
     move_ids = fields.One2many('account.move', 'l10n_ar_caea_id')
     moves_to_inform_ids = fields.One2many('account.move', compute='_compute_moves_to_inform_ids')

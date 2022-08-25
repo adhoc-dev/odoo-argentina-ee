@@ -22,8 +22,8 @@
                         <group>
                             <field name="date_from"/>
                             <field name="date_to"/>
-                            <field name="process_deadline"/>
                             <field name="process_datetime"/>
+                            <field name="process_deadline"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                             <field name="informed" readonly="1"/>
                             <field name="moves_to_inform_ids"/>
