@@ -20,12 +20,12 @@
                     </h1>
                     <group>
                         <group>
+                            <field name="informed" readonly="1"/>
                             <field name="date_from"/>
                             <field name="date_to"/>
                             <field name="process_datetime"/>
                             <field name="process_deadline"/>
                             <field name="company_id" groups="base.group_multi_company"/>
-                            <field name="informed" readonly="1"/>
                         </group>
                         <group attrs="{'invisible': [('moves_to_inform_ids', '=', [])]}">
                             <label for="moves_to_inform_ids"/>
