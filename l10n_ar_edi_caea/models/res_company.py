@@ -32,5 +32,5 @@ class ResCompany(models.Model):
     def cron_exit_contigency_mode(self):
         self.search([
             ('l10n_ar_contingency_mode', '=', True),
-            ('l10n_ar_last_afip_contigency_date', '<', fields.Datetime.subtract(
+            ('l10n_ar_last_contigency', '<', fields.Datetime.subtract(
                 fields.Datetime.now(), hours=1))]).l10n_ar_contingency_mode = False
