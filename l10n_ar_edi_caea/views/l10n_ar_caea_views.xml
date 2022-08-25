@@ -26,7 +26,10 @@
                             <field name="process_deadline"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                             <field name="informed" readonly="1"/>
-                            <field name="moves_to_inform_ids"/>
+                        </group>
+                        <group attrs="{'invisible': [('moves_to_inform_ids', '=', [])]}">
+                            <label for="moves_to_inform_ids"/>
+                            <field name="moves_to_inform_ids" colspan="4" nolabel="1"/>
                         </group>
                     </group>
                 </sheet>
