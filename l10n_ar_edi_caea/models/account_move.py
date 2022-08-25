@@ -1,5 +1,6 @@
 from odoo import _, models, fields
 from odoo.exceptions import UserError
+from odoo.tools import plaintext2html
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -12,6 +13,7 @@ class AccountMove(models.Model):
     l10n_ar_caea_id = fields.Many2one('l10n.ar.caea', copy=False)
     is_caea = fields.Boolean(compute="compute_is_caea")
     l10n_ar_afip_pos_system = fields.Selection(related="journal_id.l10n_ar_afip_pos_system")
+    l10n_ar_afip_result = fields.Selection(selection_add=[('R', 'Rejected in AFIP')])
 
     def compute_is_caea(self):
         cae_invoices = self.filtered(
@@ -25,10 +27,73 @@ class AccountMove(models.Model):
         lo de CAEA, dicho caso no reportamos a AFIP de manera inmediata """
         # TODO KZ hacer cuando implementemos contingencia or .journal_id.caea_journal_id
         send_caea = self.env.context.get('send_cae_invoices', False)
-        cae_invoices = self.filtered(lambda x: x.is_caea and not x.l10n_ar_afip_auth_code and not send_caea)
-        cae_invoices._l10n_ar_caea_validate_local()
+        cae_invoices = self.filtered(lambda x: x.is_caea and not x.l10n_ar_afip_auth_code)
+        if send_caea:
+            cae_invoices._l10n_ar_do_afip_ws_request_caea(client, auth, transport)
+        else:
+            cae_invoices._l10n_ar_caea_validate_local()
 
         return super(AccountMove, self - cae_invoices)._l10n_ar_do_afip_ws_request_cae(client=client, auth=auth, transport=transport)
+
+    def _l10n_ar_do_afip_ws_request_caea(self, client, auth, transport):
+        """ Submits the invoice information to AFIP and gets a response of AFIP in return on CAEA Moneda
+
+        Similar to what we have in _l10n_ar_do_afip_ws_request_cae method"""
+
+        for inv in self.filtered(lambda x: x.journal_id.l10n_ar_afip_ws and (x.is_caea and x.l10n_ar_afip_result not in ['A', 'O'])):
+            _logger.info("Reporting CAEA Invoice to AFIP %s", inv.display_name)
+            afip_ws = inv.journal_id.l10n_ar_afip_ws
+            errors = obs = events = ''
+            request_data = False
+            return_codes = []
+            values = {}
+
+            # We need to call a different method for every webservice type and assemble the returned errors if they exist
+            if afip_ws == 'wsfe':
+                ws_method = 'FECAEARegInformativo'
+                request_data = inv.wsfe_get_cae_request(client)
+                self._ws_verify_request_data(client, auth, ws_method, request_data)
+                response = client.service[ws_method](auth, request_data)
+                if response.FeDetResp:
+                    result = response.FeDetResp.FECAEADetResponse[0]
+                    if result.Observaciones:
+                        obs = ''.join(['\n* Code %s: %s' % (ob.Code, ob.Msg) for ob in result.Observaciones.Obs])
+                        return_codes += [str(ob.Code) for ob in result.Observaciones.Obs]
+                    values = {'l10n_ar_afip_result': result.Resultado}
+                    if result.Resultado == 'A':
+                        values.update({'l10n_ar_afip_auth_mode': 'CAEA',
+                                       'l10n_ar_afip_auth_code': result.CAEA and str(result.CAEA) or ""})
+
+                if response.Errors:
+                    errors = ''.join(['\n* Code %s: %s' % (err.Code, err.Msg) for err in response.Errors.Err])
+                    return_codes += [str(err.Code) for err in response.Errors.Err]
+                if response.Events:
+                    events = ''.join(['\n* Code %s: %s' % (evt.Code, evt.Msg) for evt in response.Events.Evt])
+                    return_codes += [str(evt.Code) for evt in response.Events.Evt]
+            else:
+                raise UserError(_('Reporting invoices in CAE in %s is not implemented') % afip_ws)
+
+            return_info = inv._prepare_return_msg(afip_ws, errors, obs, events, return_codes)
+            afip_result = values.get('l10n_ar_afip_result')
+            xml_response, xml_request = transport.xml_response, transport.xml_request
+            if afip_result not in ['A', 'O']:
+                if not self.env.context.get('l10n_ar_invoice_skip_commit'):
+                    self.env.cr.rollback()
+                if inv.exists():
+                    # Only save the xml_request/xml_response fields if the invoice exists.
+                    # It is possible that the invoice will rollback as well e.g. when it is automatically created:
+                    #   * creating credit note with full reconcile option
+                    #   * creating/validating an invoice from subscription/sales
+                    inv.sudo().write({
+                        'l10n_ar_afip_xml_request': xml_request, 'l10n_ar_afip_xml_response': xml_response,
+                        'l10n_ar_afip_result': afip_result})
+                if not self.env.context.get('l10n_ar_invoice_skip_commit'):
+                    self.env.cr.commit()
+                return return_info
+            values.update(l10n_ar_afip_xml_request=xml_request, l10n_ar_afip_xml_response=xml_response)
+            inv.sudo().write(values)
+            if return_info:
+                inv.message_post(body='<p><b>' + _('AFIP Messages') + '</b></p>' + (plaintext2html(return_info, 'em')))
 
     def _l10n_ar_caea_validate_local(self):
         """ Add CAEA number to the invoices that we need to validate and that will be inform later with CAEA """
@@ -65,17 +130,15 @@ class AccountMove(models.Model):
                 raise UserError(_('Dont have CAEA Active'))
 
             FeDetReq = res.get('FeDetReq')[0]
-            FeDetReq['FECAEADetRequest'].update({
-                'CAEA': afip_caea.name,
-            })
+            rdata = FeDetReq.pop('FECAEDetRequest')
+            rdata.update({'CAEA': afip_caea.name})
+            FeDetReq['FECAEADetRequest'] = rdata
+
             # * Code 1442: Si el punto de venta no es del tipo CONTINGENCIA para el CAEA en cuestion, no informar el campo CbteFchHsGen
             # 'CbteFchHsGen': self.date.strftime('%Y%m%d%H%M%S'),
 
             res.update({'FeDetReq': [FeDetReq]})
         return res
-
-    def get_inv_tag_ws(self):
-        return 'FECAEADetRequest' if self.is_caea else 'FECAEDetRequest'
 
     def action_reprocess_caea_afip(self):
         invoices = self.filtered(lambda x: x.is_caea and x.state == 'posted' and x.l10n_ar_afip_result == 'R')
@@ -104,9 +167,6 @@ class AccountMove(models.Model):
             inv.message_post(body=("Debido a que esta en modo contigencia se cambio el diario seleccionado por el de contigencia relacionado"))
 
         return super()._post(soft=soft)
-
-    def get_invoices_to_inform_afip(self):
-        return self.filtered(lambda x: x.journal_id.l10n_ar_afip_ws and (not x.l10n_ar_afip_auth_code or (x.is_caea and x.l10n_ar_afip_result not in ['A', 'O'])))
 
     def get_auth_mode(self):
         self.ensure_one()
