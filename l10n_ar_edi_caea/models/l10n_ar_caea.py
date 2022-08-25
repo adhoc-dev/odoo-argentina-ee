@@ -76,18 +76,13 @@ class L10nArCaea(models.Model):
 
         if self.date_from:
             init_of_month = fields.Date.start_of(self.date_from, "month")
-            fornight = fields.Date.add(self.date_from, day=16)
-            if self.date_from.day < 15:
+            end_of_month = fields.Date.end_of(self.date_from, "month")
+            fornight = fields.Date.add(self.date_from, day=15)
+            if self.date_from.day <= 15:
                 self.date_from = init_of_month
-            elif self.date_from != fornight:
-                self.date_from = fornight
-
-        if self.date_to:
-            end_of_month = fields.Date.end_of(self.date_to, "month")
-            fornight = fields.Date.add(self.date_to, day=15)
-            if self.date_to.day < 15:
                 self.date_to = fornight
-            elif self.date_to != end_of_month:
+            else:
+                self.date_from = fields.Date.add(fornight, days=1)
                 self.date_to = end_of_month
 
     # Action / Button Methods
