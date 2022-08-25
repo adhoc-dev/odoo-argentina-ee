@@ -9,7 +9,6 @@
                 <field name="name" invisible="1"/>
                 <header>
                     <button name="action_request_caea_from_afip" string="Request CAEA" type="object" attrs="{'invisible': [('name', '!=', False)]}"/>
-                    <button name="action_report_to_afip" string="Report to AFIP" type="object" attrs="{'invisible': [('informed', '=', True)]}"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box" modifiers="{}">

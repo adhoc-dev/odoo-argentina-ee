@@ -147,6 +147,10 @@ class L10nArCaea(models.Model):
     def action_report_to_afip(self):
         self.ensure_one()
         today = fields.Date.context_today(self)
+
+        if self.informed:
+            raise UserError(_('There is nothing to inform'))
+
         if self.moves_to_inform_ids:
             res = []
             try:

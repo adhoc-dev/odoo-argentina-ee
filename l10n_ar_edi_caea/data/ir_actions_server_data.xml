@@ -1,0 +1,11 @@
+<odoo>
+
+    <record id="action_request_caea" model="ir.actions.server">
+        <field name="name">AFIP: Report to AFIP</field>
+        <field name="model_id" ref="l10n_ar_edi_caea.model_l10n_ar_caea"/>
+        <field name="binding_model_id" ref="l10n_ar_edi_caea.model_l10n_ar_caea"/>
+        <field name="state">code</field>
+        <field name="code">model.action_report_to_afip()</field>
+    </record>
+
+</odoo>

@@ -10,6 +10,7 @@
     'depends' : ['l10n_ar_edi'],
     'data': [
         'data/ir_cron_data.xml',
+        'data/ir_actions_server_data.xml',
         'views/l10n_ar_caea_views.xml',
         'views/account_move_views.xml',
         'views/account_journal_views.xml',
