@@ -31,7 +31,10 @@ class L10nArCaea(models.Model):
     def name_get(self):
         res = []
         for record in self:
-            res.append((record.id, '%s (%s)' % (record.date_from.strftime('%B %Y'), record.name)))
+            if record.date_from:
+                res.append((record.id, '%s (%s)' % (record.date_from.strftime('%B %Y'), record.name)))
+            else:
+                res.append((record.id, '/'))
         return res
 
     # TODO not sure why but this is not working :(. not priority
