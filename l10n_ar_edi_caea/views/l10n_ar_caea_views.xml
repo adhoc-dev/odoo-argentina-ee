@@ -8,7 +8,6 @@
             <form string="CAEA">
                 <field name="name" invisible="1"/>
                 <header>
-                    <button name="action_request_caea_from_afip" string="Request CAEA" type="object" attrs="{'invisible': [('name', '!=', False)]}"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box" modifiers="{}">
