@@ -13,7 +13,7 @@ class AccountMove(models.Model):
     l10n_ar_caea_id = fields.Many2one('l10n.ar.caea', copy=False)
     is_caea = fields.Boolean(compute="compute_is_caea")
     l10n_ar_afip_pos_system = fields.Selection(related="journal_id.l10n_ar_afip_pos_system")
-    l10n_ar_afip_result = fields.Selection(selection_add=[('R', 'Rejected in AFIP')])
+    l10n_ar_afip_result = fields.Selection(selection_add=[('R', 'Rejected in AFIP')], string="AFIP Result")
 
     def compute_is_caea(self):
         cae_invoices = self.filtered(
@@ -26,12 +26,8 @@ class AccountMove(models.Model):
         """ Extendemos el metodo original que termina haciendo lo de factura electrónica para integrar
         lo de CAEA, dicho caso no reportamos a AFIP de manera inmediata """
         # TODO KZ hacer cuando implementemos contingencia or .journal_id.caea_journal_id
-        send_caea = self.env.context.get('send_cae_invoices', False)
-        cae_invoices = self.filtered(lambda x: x.is_caea and not x.l10n_ar_afip_auth_code)
-        if send_caea:
-            cae_invoices._l10n_ar_do_afip_ws_request_caea(client, auth, transport)
-        else:
-            cae_invoices._l10n_ar_caea_validate_local()
+        cae_invoices = self.filtered(lambda x: x.is_caea)
+        cae_invoices._l10n_ar_caea_validate_local()
 
         return super(AccountMove, self - cae_invoices)._l10n_ar_do_afip_ws_request_cae(client=client, auth=auth, transport=transport)
 
@@ -101,9 +97,7 @@ class AccountMove(models.Model):
             _logger.info("Validando Factura CAEA solo en local %s", inv.display_name)
             # TODO KZ oportunidad de mejora. mover el calculo del afip_caea previo al loop. desde alli ver los caea d
             # todas las compa;ias y hacer early return si no existe.
-            afip_caea = inv.get_active_caea()
-            if not afip_caea:
-                raise UserError(_('Dont have CAEA Active'))
+            afip_caea = self.ensure_caea()
             values = {
                 'l10n_ar_afip_auth_mode': 'CAEA',
                 'l10n_ar_caea_id': afip_caea.id,
@@ -118,16 +112,22 @@ class AccountMove(models.Model):
         self.ensure_one()
         return self.env['l10n.ar.caea'].search([
             ('company_id', '=', self.company_id.id),
-            ('date_from', '<=', self.date), ('date_to', '>=', self.date)])
+            ('date_from', '<=', self.date), ('date_to', '>=', self.date),
+            ('name', '!=', False)])
+
+    def ensure_caea(self):
+        """Obtiene el CAEA actual que se puede usar para dicha factura """
+        afip_caea = self.get_active_caea()
+        if not afip_caea:
+            raise UserError(_('Dont have an active or valid CAEA'))
+        return afip_caea
 
     def wsfe_get_cae_request(self, client=None):
         """ Add more info needed for report to webserive with CAEA"""
         self.ensure_one()
         res = super().wsfe_get_cae_request(client=client)
         if self.l10n_ar_afip_ws == 'wsfe' and self.is_caea:
-            afip_caea = self.get_active_caea()
-            if not afip_caea:
-                raise UserError(_('Dont have CAEA Active'))
+            afip_caea = self.ensure_caea()
 
             FeDetReq = res.get('FeDetReq')[0]
             rdata = FeDetReq.pop('FECAEDetRequest')
@@ -152,7 +152,7 @@ class AccountMove(models.Model):
             afip_ws = afip_caea.get_afip_ws()
             return_info_all = []
             client, auth, transport = inv.company_id._l10n_ar_get_connection(afip_ws)._get_client(return_transport=True)
-            return_info = inv.with_context(send_cae_invoices=True)._l10n_ar_do_afip_ws_request_cae(client, auth, transport)
+            return_info = inv._l10n_ar_do_afip_ws_request_caea(client, auth, transport)
             if return_info:
                 return_info_all.append("<strong>%s</strong> %s" % (inv.name, return_info))
         if return_info_all:

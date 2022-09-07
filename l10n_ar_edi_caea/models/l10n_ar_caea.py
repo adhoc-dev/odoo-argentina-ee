@@ -241,7 +241,7 @@ class L10nArCaea(models.Model):
         return_info_all = []
         for inv in self.moves_to_inform_ids.sorted(key=lambda r: r.invoice_date and r.l10n_latam_document_number):
             client, auth, transport = inv.company_id._l10n_ar_get_connection(afip_ws)._get_client(return_transport=True)
-            return_info = inv.with_context(send_cae_invoices=True)._l10n_ar_do_afip_ws_request_cae(client, auth, transport)
+            return_info = inv._l10n_ar_do_afip_ws_request_caea(client, auth, transport)
             if return_info:
                 return_info_all.append("<strong>%s</strong> %s" % (inv.name, return_info))
         if return_info_all:
