@@ -16,6 +16,10 @@
                 <div class="alert alert-warning" attrs="{'invisible': ['|', '|', ('is_caea', '=', False), ('state', '!=', 'draft'), ('l10n_ar_afip_pos_system', '=', 'RAW_MAW_CAEA')]}" role="alert">
                     Está en modo contingencia, al validar la factura se intentará validar en el diario de contingencia correspondiente
                 </div>
+
+                <div class="alert alert-warning" attrs="{'invisible': [('l10n_caea_info', '=', False)]}" role="alert">
+                    Alerta: <field name="l10n_caea_info"/>
+                </div>
             </sheet>
 
             <button name="action_post" position="after">

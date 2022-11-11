@@ -1,4 +1,4 @@
-from odoo import _, models, fields
+from odoo import _, api, models, fields
 from odoo.exceptions import UserError
 from odoo.tools import plaintext2html
 import logging
@@ -14,13 +14,28 @@ class AccountMove(models.Model):
     is_caea = fields.Boolean(compute="compute_is_caea")
     l10n_ar_afip_pos_system = fields.Selection(related="journal_id.l10n_ar_afip_pos_system")
     l10n_ar_afip_result = fields.Selection(selection_add=[('R', 'Rejected in AFIP')], string="AFIP Result")
+    l10n_caea_info = fields.Char(compute="compute_is_caea")
 
+    @api.depends("journal_id")
     def compute_is_caea(self):
-        cae_invoices = self.filtered(
-            lambda x: (x.journal_id.l10n_ar_afip_pos_system and 'CAEA' in x.journal_id.l10n_ar_afip_pos_system and x.journal_id.l10n_ar_contingency_journal_id)
-            or x.journal_id.l10n_ar_afip_ws == 'wsfe' and x.journal_id.company_id.l10n_ar_contingency_mode)
+        """ Soy CAEA si:
+        1. Soy una factura dentro de diario CAEA
+        2. Soy una factura electronica pero estoy en un diario no CAEA y estoy en modo contingencia  """
+        caea_invoices = self.filtered(
+            lambda x: x.journal_id.l10n_ar_afip_pos_system and 'CAEA' in x.journal_id.l10n_ar_afip_pos_system)
+        contg_invoices = self.filtered(
+            lambda x: x.journal_id.l10n_ar_afip_ws == 'wsfe' and 'CAEA' not in x.journal_id.l10n_ar_afip_pos_system
+            and x.journal_id.company_id.l10n_ar_contingency_mode)
+
+        missing_config = contg_invoices.filtered(lambda x: not x.journal_id.l10n_ar_contingency_journal_id)
+        if missing_config:
+            missing_config.l10n_caea_info = _("IMPORTANTE: Estas en modo contigencia pero no estan configurandos los darios de contingencia del diario seleccionado")
+            contg_invoices -= missing_config
+
+        cae_invoices = caea_invoices + contg_invoices
         cae_invoices.is_caea = True
         (self - cae_invoices).is_caea = False
+        (self - missing_config).l10n_caea_info = False
 
     def _l10n_ar_do_afip_ws_request_cae(self, client, auth, transport):
         """ Extendemos el metodo original que termina haciendo lo de factura electrónica para integrar
