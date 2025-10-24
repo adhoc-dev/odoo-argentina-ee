@@ -29,7 +29,8 @@
     "images": [],
     "depends": [
         "account_reports",
-        "l10n_ar",
+        # "l10n_ar_tax",
+        "l10n_ar_withholding",
         "l10n_latam_check",
     ],
     "data": [
@@ -40,6 +41,7 @@
         "wizards/checks_to_date_view.xml",
         "reports/report_checks_to_date.xml",
         "security/ir.model.access.csv",
+        "data/arba_report.xml",
     ],
     "demo": [],
     "test": [],
