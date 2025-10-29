@@ -1,6 +1,6 @@
 from odoo import models, fields, _
 from odoo.exceptions import UserError
-from odoo.tools.zeep.helpers import serialize_object
+import zeep
 import logging
 _logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ class ResPartner(models.Model):
         if errors:
             raise UserError(error_msg % (self.name, vat, errors))
 
-        data = serialize_object(res.datosGenerales, dict)
+        data = zeep.helpers.serialize_object(res.datosGenerales, dict)
         if not data:
             raise UserError(error_msg % (self.name, vat, res))
 
@@ -77,8 +77,8 @@ class ResPartner(models.Model):
             raise UserError(error_msg % (self.name, vat, 'La afip no devolvió nombre'))
 
         domicilio = data.get("domicilioFiscal", {})
-        data_mt = serialize_object(res.datosMonotributo, dict) or {}
-        data_rg = serialize_object(res.datosRegimenGeneral, dict) or {}
+        data_mt = zeep.helpers.serialize_object(res.datosMonotributo, dict) or {}
+        data_rg = zeep.helpers.serialize_object(res.datosRegimenGeneral, dict) or {}
         impuestos = [imp["idImpuesto"]
                      for imp in data_mt.get("impuesto", []) + data_rg.get("impuesto", [])
                      if data.get('estadoClave') == 'ACTIVO']
